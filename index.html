@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>The Hollow Realm</title>
+  <style>
+    :root {
+      --bg: #02040a; --surface: rgba(13, 17, 30, 0.45); --card: rgba(20, 25, 45, 0.5);
+      --border: rgba(125, 150, 255, 0.15); --border-glow: rgba(125, 170, 255, 0.4);
+      --accent: #818cf8; --gold: #fbbf24; --red: #f87171; --green: #34d399; --text: #f8fafc; --dim: #94a3b8;
+      
+      /* VILLAIN SPECIFIC COLORS */
+      --v-active: #ef5350; --v-wounded: #ffd54f; --v-retreated: #ff9800; --v-defeated: #555; --v-unknown: #9c27b0;
+      --p1: #ef5350; --p2: #ff9800; --p3: #9c27b0; --p4: #4fc3f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+    
+    /* LIQUID TOUCH RIPPLE */
+    .ripple { position: fixed; width: 100px; height: 100px; margin-left: -50px; margin-top: -50px; background: radial-gradient(circle, rgba(129, 140, 248, 0.4) 0%, rgba(129, 140, 248, 0) 70%); border-radius: 50%; pointer-events: none; z-index: 9999; animation: rippleAnim 0.8s ease-out forwards; }
+    @keyframes rippleAnim { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+
+    /* HEADER & IMAGE */
+    .header-img { width: 100%; height: 220px; object-fit: cover; object-position: center top; -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%); position: absolute; top: 0; left: 0; z-index: 0; }
+    .header-glass { background: rgba(2, 4, 10, 0.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 20px 16px 16px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .live-badge { background: rgba(251, 191, 36, 0.15); border: 1px solid var(--gold); color: var(--gold); font-size: 0.65rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; letter-spacing: 1px; }
+    
+    /* TABS */
+    .tabs { display: flex; background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; padding: 4px 8px; position: relative; z-index: 10; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 10px 16px; font-size: 0.75rem; font-weight: 600; color: var(--dim); cursor: pointer; white-space: nowrap; border-radius: 20px; margin: 4px; flex-shrink: 0; transition: all 0.3s ease; border: 1px solid transparent; }
+    .tab.active { color: #fff; background: rgba(129, 140, 248, 0.15); border-color: rgba(129, 140, 248, 0.3); }
+
+    /* PANELS & CARDS */
+    .panel { display: none; padding: 16px; padding-bottom: 100px; position: relative; z-index: 10; }
+    .panel.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .card { background: var(--card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; }
+    
+    /* INPUTS & BUTTONS */
+    .label { display: block; font-size: 0.7rem; font-weight: 500; color: var(--dim); margin-bottom: 6px; }
+    .input { width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 0.9rem; outline: none; transition: border 0.2s ease; margin-bottom: 12px; box-sizing: border-box; }
+    .input:focus { border-color: var(--accent); }
+    select.input option { background: #0a0f1e; color: #fff; }
+    .btn { width: 100%; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: 600; background: rgba(129, 140, 248, 0.2); color: var(--accent); transition: all 0.2s ease; text-align: center; box-sizing: border-box; display: inline-block; }
+    .btn:active { transform: scale(0.98); }
+    .btn-sm { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; font-size: 0.75rem; font-weight: 500; background: rgba(255,255,255,0.05); color: #fff; }
+    
+    /* PLAYER UI & AVATARS */
+    .player-card { background: var(--card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 12px; transition: border-color 0.3s; }
+    .player-card.dead { opacity: 0.6; }
+    .hp-bar { height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .hp-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+    
+    .avatar-container { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+    .char-avatar { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; border: 1px solid var(--border); background: #0a0f1e; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--dim); }
+    .user-avatar { position: absolute; bottom: -6px; right: -6px; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #0f1322; background: #1a2035; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #fff; }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 200; padding: 20px; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+    .modal { background: var(--bg); border: 1px solid var(--border-glow); border-radius: 20px; width: 100%; max-width: 450px; padding: 24px; max-height: 85vh; overflow-y: auto; }
+    
+    .ledger-item { padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
+    
+    /* ACCORDION */
+    .faq-item { border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    .faq-btn { background: none; border: none; color: var(--text); width: 100%; text-align: left; padding: 12px 0; font-size: 0.8rem; font-weight: 500; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-family: inherit; }
+    .faq-ans { font-size: 0.75rem; color: var(--dim); line-height: 1.6; padding-bottom: 12px; display: none; }
+    .faq-ans.open { display: block; }
+
+    /* NPC & VILLAIN SPECIFIC */
+    .npc-card { background: var(--card); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 12px; transition: all 0.3s; }
+    .villain-card { background: rgba(20,8,8,0.7); backdrop-filter: blur(16px); border: 1px solid var(--v-active); border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(239,83,80,0.1); }
+    .v-phase-1 { color: var(--p1); border-color: var(--p1); }
+    .v-phase-2 { color: var(--p2); border-color: var(--p2); }
+    .v-phase-3 { color: var(--p3); border-color: var(--p3); }
+    .v-phase-4 { color: var(--p4); border-color: var(--p4); }
+  </style>
+</head>
+<body>
+
+  <script>
+    document.addEventListener('pointerdown', function(e) {
+      if(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('label')) return;
+      const r = document.createElement('div');
+      r.className = 'ripple';
+      r.style.left = e.clientX + 'px';
+      r.style.top = e.clientY + 'px';
+      document.body.appendChild(r);
+      setTimeout(() => r.remove(), 800);
+    });
+  </script>
+
+  <img src="IMG_5131.png" class="header-img" onerror="this.style.display='none'">
+  <div class="header-glass">
+    <div style="position:relative; z-index:1;">
+      <div style="font-weight:800; font-size:1.2rem; letter-spacing:1px;">THE HOLLOW REALM</div>
+      <div style="font-size:0.65rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-top:2px; font-weight:600;">Game Master Console</div>
+    </div>
+    <div class="live-badge" style="position:relative; z-index:1;">LIVE</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('players')">👥 Party</div>
+    <div class="tab" onclick="showTab('npcs')">👁 NPCs</div>
+    <div class="tab" onclick="showTab('villains')">🎭 Villains</div>
+    <div class="tab" onclick="showTab('create')">🪆 Forge</div>
+    <div class="tab" onclick="showTab('arena')">🎲 Arena</div>
+    <div class="tab" onclick="showTab('ledger')">📋 Ledger</div>
+    <div class="tab" onclick="showTab('ref')">📖 Ref</div>
+    <div class="tab" onclick="showTab('rules')">📜 Rules</div>
+    <div class="tab" onclick="showTab('wrapup')">📝 Wrap-Up</div>
+  </div>
+
+  <div style="padding-top:180px; margin-top:-180px; pointer-events:none;"></div>
+
+  <div id="tab-players" class="panel active">
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <input class="input" id="search-input" placeholder="Search characters..." oninput="renderPlayers()" style="margin:0; flex:1;">
+      <button class="btn-sm" style="background:rgba(255,255,255,0.1); width:auto; padding:0 16px;" onclick="showTab('create')">+ Add</button>
+    </div>
+    <div id="players-container"></div>
+  </div>
+
+  <div id="tab-npcs" class="panel">
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <input class="input" id="npc-search-input" placeholder="🔍 Search NPCs..." oninput="renderNpcs()" style="margin:0; flex:1;">
+      <button class="btn-sm" style="background:rgba(129, 140, 248, 0.2); color:var(--accent); border-color:var(--accent); width:auto; padding:0 16px;" onclick="openNpcEdit('new')">+ NPC</button>
+    </div>
+    <div id="npcs-container"></div>
+  </div>
+
+  <div id="tab-villains" class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div id="villain-count" style="font-size:0.75rem; color:var(--dim); font-weight:600;"></div>
+      <button class="btn-sm" style="background:rgba(239, 83, 80, 0.15); color:var(--red); border-color:var(--red); padding:8px 16px;" onclick="openVillainEdit('new')">🎭 + Threat</button>
+    </div>
+    <div id="villains-container"></div>
+  </div>
+
+  <div id="tab-create" class="panel">
+    <div class="card">
+      <div class="section-title">Forge Identity</div>
+      <label class="label">TikTok Username</label>
+      <input class="input" id="c-username" placeholder="@username">
+      
+      <label class="label">Character Name</label>
+      <select class="input" id="c-charname" onchange="toggleCustomName()">
+        <option value="">— Select Name —</option>
+      </select>
+      <input class="input" id="c-customname" placeholder="Type custom name..." style="display:none; margin-top:-6px;">
+      
+      <label class="label">Class</label>
+      <select class="input" id="c-class">
+        <option value="">— Select Class —</option>
+        <option value="Warrior">Warrior</option><option value="Wizard">Wizard</option>
+        <option value="Rogue">Rogue</option><option value="Healer">Healer</option>
+        <option value="Merchant">Merchant</option><option value="Bard">Bard</option>
+      </select>
+
+      <div class="section-title" style="margin-top:20px;">Visuals</div>
+      <div style="display:flex; gap:12px; margin-bottom:12px;">
+        <div style="flex:1;">
+          <label class="label" style="text-align:center;">TikTok User</label>
+          <label class="btn-sm" style="display:block; text-align:center; padding:10px 0; border:1px dashed var(--accent); color:var(--accent);">
+            Upload <input type="file" id="up-user" accept="image/*" style="display:none;" onchange="handleImageUpload(this, 'prev-user')">
+          </label>
+          <img id="prev-user" style="width:100%; height:80px; object-fit:cover; border-radius:10px; margin-top:8px; display:none; border:1px solid var(--border);">
+        </div>
+        <div style="flex:1;">
+          <label class="label" style="text-align:center;">Character Art</label>
+          <label class="btn-sm" style="display:block; text-align:center; padding:10px 0; border:1px dashed var(--gold); color:var(--gold);">
+            Upload <input type="file" id="up-char" accept="image/*" style="display:none;" onchange="handleImageUpload(this, 'prev-char')">
+          </label>
+          <img id="prev-char" style="width:100%; height:80px; object-fit:cover; border-radius:10px; margin-top:8px; display:none; border:1px solid var(--border);">
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:20px;">Origin Rolls (Optional)</div>
+      <div style="display:flex; gap:10px;">
+        <input class="input" type="number" id="c-roll-rep" placeholder="Rep (1-20)">
+        <input class="input" type="number" id="c-roll-trait" placeholder="Trait (1-20)">
+        <input class="input" type="number" id="c-roll-wpn" placeholder="Wpn (1-20)">
+      </div>
+      
+      <button class="btn" style="margin-top:10px;" onclick="addPlayer()">Confirm & Write to Lore</button>
+    </div>
+  </div>
+
+  <div id="tab-arena" class="panel">
+    <div class="card" style="text-align:center; padding:30px 20px;">
+      <div class="section-title">Fate Engine</div>
+      <div id="dice-icon" style="font-size:5rem; transition:all 0.3s; user-select:none;">🎲</div>
+      <div style="height:60px; margin-top:10px;">
+        <div id="dice-num" style="font-size:2rem; font-weight:bold;"></div>
+        <div id="dice-tier" style="font-size:1rem; font-weight:bold; letter-spacing:1px; margin-top:4px;"></div>
+      </div>
+      <button class="btn" style="background:rgba(129, 140, 248, 0.3);" onclick="rollDice()">ROLL d20</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="color:var(--gold);">Box Battle Finalization</div>
+      <div style="font-size:0.7rem; color:var(--dim); margin-bottom:16px;">Run timer on TikTok. Input final coins here to log it.</div>
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <div style="flex:1;">
+          <input class="input" id="b-p1" placeholder="Player 1" style="margin-bottom:6px;">
+          <input class="input" id="b-c1" type="number" placeholder="Final Coins" style="margin:0; color:var(--gold);">
+        </div>
+        <div style="display:flex; align-items:center; font-weight:bold; color:var(--accent);">VS</div>
+        <div style="flex:1;">
+          <input class="input" id="b-p2" placeholder="Player 2" style="margin-bottom:6px;">
+          <input class="input" id="b-c2" type="number" placeholder="Final Coins" style="margin:0; color:var(--gold);">
+        </div>
+      </div>
+      <button class="btn" style="background:rgba(251, 191, 36, 0.15); border-color:var(--gold); color:var(--gold); margin-top:10px;" onclick="registerBattle()">Lock In & Register Battle</button>
+    </div>
+  </div>
+
+  <div id="tab-ledger" class="panel">
+    <div class="card">
+      <div class="section-title">Box Battle Records</div>
+      <div id="battle-history"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Live Action Feed</div>
+      <div id="action-feed" style="max-height:400px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <div id="tab-ref" class="panel">
+    <div class="card">
+      <div class="section-title">Class Roll Tables</div>
+      <div style="display:flex; overflow-x:auto; gap:6px; margin-bottom:16px; scrollbar-width:none;">
+        <button class="btn-sm" id="btn-ref-Warrior" onclick="renderRefTables('Warrior')" style="flex-shrink:0;">⚔️ Warrior</button>
+        <button class="btn-sm" id="btn-ref-Wizard" onclick="renderRefTables('Wizard')" style="flex-shrink:0;">🔮 Wizard</button>
+        <button class="btn-sm" id="btn-ref-Rogue" onclick="renderRefTables('Rogue')" style="flex-shrink:0;">🗡️ Rogue</button>
+        <button class="btn-sm" id="btn-ref-Healer" onclick="renderRefTables('Healer')" style="flex-shrink:0;">💚 Healer</button>
+        <button class="btn-sm" id="btn-ref-Merchant" onclick="renderRefTables('Merchant')" style="flex-shrink:0;">💰 Merchant</button>
+        <button class="btn-sm" id="btn-ref-Bard" onclick="renderRefTables('Bard')" style="flex-shrink:0;">🎵 Bard</button>
+      </div>
+      <div id="ref-tables-content"></div>
+    </div>
+    
+    <div class="card">
+      <div class="section-title">Coin & Gift Reference</div>
+      <div id="ref-gifts-content"></div>
+    </div>
+  </div>
+
+  <div id="tab-rules" class="panel">
+    <div class="card">
+      <div class="section-title">Rule Book — The Hollow Realm</div>
+      <select class="input" id="rule-select" onchange="renderActiveRule()"></select>
+      <div id="rule-content" style="margin-top:16px;"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">✦ Frequently Asked Questions</div>
+      <input class="input" id="faq-search" placeholder="🔍 Search questions..." oninput="renderFAQ()">
+      <div id="faq-content"></div>
+    </div>
+  </div>
+
+  <div id="tab-wrapup" class="panel">
+    <div class="card">
+      <div class="section-title">Post-Session Checklist</div>
+      <div id="checklist-container"></div>
+      <button class="btn-sm" style="margin-top:16px; width:100%; border-color:var(--border);" onclick="resetChecklist()">↺ Reset Checklist for Next Live</button>
+    </div>
+    <div class="card">
+      <div class="section-title">Session Notes</div>
+      <label class="label">What happened this session?</label>
+      <textarea class="input" id="session-notes" style="height:120px; resize:vertical;" placeholder="Key story beats, consequences applied, rolls that mattered..." oninput="saveNotes()"></textarea>
+      
+      <label class="label" style="margin-top:10px;">Unresolved threads to carry forward</label>
+      <textarea class="input" id="session-threads" style="height:80px; resize:vertical;" placeholder="What's still hanging? What do you pick up next live?" oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+        <div>
+          <div id="m-title" style="font-size:1.2rem; font-weight:bold;"></div>
+          <div id="m-sub" style="font-size:0.8rem; color:var(--dim);"></div>
+        </div>
+        <button onclick="closeEditModal()" style="background:none; border:none; color:var(--dim); font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+      
+      <div class="section-title">Status & Faction</div>
+      <select class="input" id="m-status">
+        <option>Active & Healthy</option><option>Injured</option><option>Recovering</option>
+        <option>Missing</option><option>Captured</option><option>Corrupted</option>
+      </select>
+      <select class="input" id="m-faction" style="margin-bottom:20px;">
+        <option>Unaligned</option><option>Moon Squad</option><option>The Hollow Warden's Court</option>
+        <option>The Edge Runners</option><option>The Sunken Scholars</option><option>Garrison Exiles</option>
+      </select>
+      
+      <div class="section-title">GM Notes / Origin Stats</div>
+      <textarea class="input" id="m-notes" style="height:100px; resize:vertical;" placeholder="Inventory, Traits, Story Notes..."></textarea>
+      
+      <button class="btn" id="m-death-btn" onclick="toggleDeath()" style="margin-bottom:10px;"></button>
+      <button class="btn" style="background:rgba(255,255,255,0.05); color:#fff; border-color:var(--border);" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="npc-modal">
+    <div class="modal" id="npc-modal-content">
+      </div>
+  </div>
+
+  <div class="modal-overlay" id="villain-modal">
+    <div class="modal" id="villain-modal-content">
+      </div>
+  </div>
+
+  <script>
+    // ════ GAME DATA ════
+    const NAMES = ["Alden","Valerius","Serana","Kaelen","Torbjorn","Elara","Fenris","Isolde","Gideon","Vael","Nyx","Draven","Soren","Lyra","Kael","Thorne","Vanya","Elias","Rurik","Sylas","Aric","Caelan","Freya","Ignis","Loric","Orion","Talon","Vesper","Zephyr","Astrid"];
+    const CLASS_HP = { Warrior:12, Wizard:7, Rogue:8, Healer:9, Merchant:8, Bard:8 };
+    const CLASS_ICON = { Warrior:"⚔️", Wizard:"🔮", Rogue:"🗡️", Healer:"💚", Merchant:"💰", Bard:"🎵" };
+    const CHECKLIST_ITEMS = ["HP updated for all players", "Inventory changes recorded", "Board positions updated", "Box Battle outcomes recorded + ripple effects noted", "Discord summary posted", "Gift Power Used flags reset for next session"];
+
+    // NPC DATA
+    const NPC_FACTIONS = ["The Crumbling Kingdom","The Dark Enchanted Forest","The Underground Caverns","The Hollow’s Edge","The Sunken Library","Criminal Underground","Merchant Guild","Healing Order","Military Remnant","Unknown / No Faction"];
+    const NPC_DISPOSITIONS = {
+      allied:   { label:"Allied",   color:"#34d399", bg:"rgba(16, 185, 129, 0.2)",  icon:"💚" },
+      friendly: { label:"Friendly", color:"#7dd3fc", bg:"rgba(56, 189, 248, 0.2)",  icon:"🤝" },
+      neutral:  { label:"Neutral",  color:"#94a3b8", bg:"rgba(148, 163, 184, 0.2)", icon:"⚖️" },
+      wary:     { label:"Wary",     color:"#fbbf24", bg:"rgba(251, 191, 36, 0.2)",  icon:"👁" },
+      hostile:  { label:"Hostile",  color:"#f87171", bg:"rgba(248, 113, 113, 0.2)", icon:"⚔️" },
+      unknown:  { label:"Unknown",  color:"#c084fc", bg:"rgba(192, 132, 252, 0.2)", icon:"❓" }
+    };
+    const NPC_STATUSES = {
+      active:   { label:"Active",   color:"#34d399" },
+      missing:  { label:"Missing",  color:"#fbbf24" },
+      dead:     { label:"Dead",     color:"#475569" },
+      hidden:   { label:"Hidden",   color:"#c084fc" }
+    };
+
+    // VILLAIN DATA
+    const VILLAIN_STATUSES = {
+      active:    { label:"Active",    color:"#ef5350", bg:"rgba(60,10,10,0.8)"  },
+      wounded:   { label:"Wounded",   color:"#ffd54f", bg:"rgba(50,40,5,0.8)"  },
+      retreated: { label:"Retreated", color:"#ff9800", bg:"rgba(50,30,5,0.8)"  },
+      defeated:  { label:"Defeated",  color:"#555",    bg:"rgba(20,20,20,0.8)" },
+      unknown:   { label:"Unknown",   color:"#9c27b0", bg:"rgba(30,10,50,0.8)" },
+    };
+    const VILLAIN_PHASE_COLORS = ["#ef5350","#ff9800","#9c27b0","#4fc3f7"];
+
+    const GIFT_TIERS = [
+      ["🌑 Entry","1,000","~$14","~$7"],["⚔️ Minor Roll","100","~$1.40","~$0.70"],["⚔️⚔️ Moderate","500","~$7","~$3.50"],
+      ["⚔️⚔️⚔️ Major","5,000","~$70","~$35"],["⚡ Epic — Lion","29,999","~$420","~$210"],["🎬 Episode","5,000+","~$70","~$35"],
+      ["👑 Origin Story","10,000","~$140","~$70"],["🌟 Gift a Legend","20,000","~$280","~$140"],["⚗️ Resurrection","6,000","~$84","~$42"],
+      ["🛡️ Protection","1,000/session","~$14","~$7"],["🎲 Re-Roll 1st","500","~$7","~$3.50"],["🎲 Re-Roll 2nd","1,500","~$21","~$10.50"],
+      ["🤝 Item Trade","1,000","~$14","~$7"],["🗳️ Battle Vote","500","~$7","~$3.50"]
+    ];
+
+    const RULES_SECTIONS = [
+      { id:"overview", label:"🌑 Overview", icon:"🌑", content:`The Hollow Realm is a live TikTok RPG where your gifts drive the story. Characters are created off-stream, debuted on live, and carry every consequence forward — permanently.\n\nTwo layers exist: the bobblehead world (cute surface), and The Hollow Realm (the adventure inside the board game they're playing). Think Toy Story meets Jumanji meets D&D.\n\nNothing resets. Everything matters.` },
+      { id:"sessions", label:"📡 How Sessions Work", icon:"📡", content:`Every live follows 5 steps:\n\n1. OPEN THE WORLD — Recap, board positions, current stakes\n2. PLAYERS TAKE ACTIONS — Send gifts to declare what your character does\n3. THE DICE DECIDES — DM rolls d20 on your behalf, live\n4. WORLD EVENTS — Coins and donations trigger events affecting everyone\n5. CLOSE THE SESSION — Everything recorded. Nothing resets.` },
+      { id:"dice", label:"🎲 The Dice System", icon:"🎲", content:`All actions resolve with a d20 roll:\n\n💀 1 = FUMBLE — Catastrophic backfire\n✗ 2–4 = FAIL — Action fails entirely\n⚠ 5–9 = WEAK HIT — Partial success, something goes wrong\n✓ 10–14 = SUCCESS — Clean success\n★ 15–19 = STRONG HIT — Success with bonus effect\n⚡ 20 = CRITICAL — Legendary moment. Announced live.` },
+      { id:"creation", label:"🪆 Character Creation", icon:"🪆", content:`Pay entry fee → Confirm in Discord → Three d20 rolls → Debuted at next live.\n\nROLL 1 — Reputation Title (class-specific, 13 entries, 1–20)\nROLL 2 — Trait Effectiveness (1–4 Weakened / 5–9 Standard / 10–14 Strong / 15–19 Exceptional / 20 Legendary)\nROLL 3 — Starting Weapon (1–4 Battered / 5–9 Standard / 10–14 Fine / 15–19 Rare / 20 Unique Named)\n\nRe-rolls: 500 coins (1st, final) / 1,500 coins (2nd, absolute final). Happen live. Chat watches. Low rolls are tragic but interesting — not just disadvantages.` },
+      { id:"classes", label:"⚔️ Classes", icon:"⚔️", content:`⚔️ WARRIOR/KNIGHT — 12 HP — STR+3, DEF+2\nGift Power: Shield Block — absorb damage from one ally\n\n🔮 WIZARD/SPELLCASTER — 7 HP — INT+4, SPD+1\nGift Power: Arcane Surge — double next roll effect\n\n🗡️ ROGUE/TRICKSTER — 8 HP — SPD+4, LCK+2\nGift Power: Shadow Step — avoid one consequence\n\n💚 HEALER/SUPPORT — 9 HP — WIS+3, CHA+2\nGift Power: Miracle Touch — restore downed player to 1 HP\n\n💰 MERCHANT/CRAFTER — 8 HP — CHA+3, LCK+3\nGift Power: Black Market — purchase special item mid-session\n\n🎵 BARD/PERFORMER — 8 HP — CHA+5, WIS+1\nGift Power: Encore — re-roll any failed dice roll\n\nGift Powers reset each session. Activated by 5,000 coin Power Gift.` },
+      { id:"gifts", label:"💰 Gift & Coin Tiers", icon:"💰", content:`All prices in TikTok coins. TikTok takes 50% — amounts shown are what you receive (CAD).\n\n🌑 Entry (1,000 coins / ~$7 to you) — Permanent character. One time.\n⚔️ Minor Action Roll (100 / ~$0.70) — Small story ripple\n⚔️⚔️ Moderate Roll (500 / ~$3.50) — Real consequence\n⚔️⚔️⚔️ Major Roll (5,000 / ~$35) — Session-changing\n⚡ Epic — Lion (29,999 / ~$210) — World-altering\n🎬 Episode Appearance (5,000+ total / ~$35) — 15–30 sec animated scene\n👑 Origin Story (10,000 / ~$70) — 1–1:30 min episode, you narrate\n🌟 Gift a Legend (20,000 / ~$140) — You + one chosen player get Origin Story\n⚗ Resurrection (6,000 / ~$42) — Dead character fully restored\n💀 New Character (1,000 / ~$7) — Fresh start after death\n🤝 Item Trade (1,000 / ~$7) — Both players must agree\n🛡 Protection (1,000/session / ~$7) — Insurance per session missed\n🎲 Re-Roll 1st (500 / ~$3.50) — Re-roll one creation roll, final\n🎲 Re-Roll 2nd (1,500 / ~$10.50) — Second re-roll same stat, absolute final\n🗳 Battle Vote (500 / ~$3.50) — Trigger Box Battle vote\n\nPayPal accepted at 80% of coin value (~$11.20 CAD entry).` },
+      { id:"death", label:"💀 Death & Resurrection", icon:"💀", content:`At 0 HP: DOWNED — not immediately dead. A Healer can revive before session ends.\n\nNo revival = Death.\n\nDead character's legacy stays in the lore permanently. Their name retires.\n\nOptions after death:\n⚗ RESURRECTION — 6,000 coins. Full stats restored. The world acknowledges your return.\n💀 NEW CHARACTER — 1,000 coins. Fresh start. Your old character becomes permanent world lore.\n\nStory-defining deaths get animated in the next Kling episode.\n\nConsequences before death:\n⚗ CURSED — Active. Carries forward until lifted.\n🎯 WANTED — Factions may act against you.\n🚫 EXILED — Region access restricted.\n⛓ SERVANT — Bound to another character for one session.\n💸 DEBT — Owed to a faction or NPC.\n👻 HAUNTED — Something follows you.` },
+      { id:"protection", label:"🛡 Protection Mode", icon:"🛡", content:`Protection covers: Death + Box Battle targeting only.\n\nDoes NOT cover: Curses, world events, NPC changes, story consequences from your own actions.\n\nCost: 1,000 coins per session missed (deducted from your banked balance).\nWhen balance hits zero: TikTok DM + Discord notification.\nInsurance Board in Discord tracks all balances publicly.\n\nLore framing: Your character moves with a "ward" — darker forces cannot fully claim them while it holds.` },
+      { id:"battle", label:"⚔️ Box Battle", icon:"⚔️", content:`Chat votes to trigger (minimum 500 coins to start). Both players enter TikTok boxes. Communities throw coins for 3 minutes. Highest total wins.\n\nWinner selects consequence from the tier their total unlocks. d20 rolled to confirm consequence lands. DM announces both win AND lose outcomes before the roll.\n\nCONSEQUENCE LADDER:\n⚠ MINOR (under 5,000) — Lose title OR stat debuff (1 session)\n⚔️ MODERATE (5,000–9,999) — Cursed 2 sessions OR item stolen\n💀 MAJOR (10,000–19,999) — Exile from region OR servant (1 session)\n☠ SEVERE (20,000–44,999) — Character killed OR curse+exile+theft\n👁 OP — NARRATIVE CONTROL (45,000+) — Winner narrates what they want. One session.\n\nDomino Rule: Every consequence creates permanent ripple. Nothing in isolation.` },
+      { id:"alliances", label:"🤝 Alliances", icon:"🤝", content:`Any 2+ players can declare alliance (public, recorded in Discord).\n\nAllied players can combine action rolls. Communities pool coins in Box Battles.\n\nFormally breaking alliance: 500 coins Declaration gift.\nBetraying without declaration: Free — and has permanent story consequences.\n\nBetrayal without declaration makes the best Kling episode material.` },
+      { id:"persistent", label:"🌍 Persistent World", icon:"🌍", content:`Everything carries between every live:\n\n• Character Stats & HP\n• Inventory (items can be lost, stolen, destroyed)\n• Board Position on the map\n• Story Consequences\n• Reputation & Titles (permanent)\n• Villain and NPC Memory\n• Legacy of Dead Characters (names retire, lore remains)\n\nAbsent players: Your character exists and can be affected by world events even if you're not watching. Session summaries posted in Discord.\n\nProtection Mode covers you while away (see Protection tab).` },
+      { id:"hof", label:"🏆 Hall of Fame", icon:"🏆", content:`Inducted for:\n• Natural 20 on a world-changing action\n• Story-defining death\n• Box Battle OP tier (45,000+ coins)\n• Legendary reputation title earned\n• Origin Story episode produced\n\nHonours:\n✦ Announced every live\n✦ Referenced in future arcs\n✦ Included in arc finale animation\n✦ Permanent title prefix` }
+    ];
+
+    const FAQ = [
+      {q:"Can I play if I missed the start?", a:"Yes. New characters can join at any time via the entry gift (1,000 coins or PayPal equivalent). You'll be introduced at the next live."},
+      {q:"What happens if I miss a live?", a:"Your character exists in the world. If you have Protection Mode banked, you're covered from death and Box Battle targeting. World events and story consequences can still reach you. Session summaries are always posted in Discord."},
+      {q:"Can I choose my class and name?", a:"Yes to class. Names must be chosen from the official Hollow Realm name list — this keeps the world consistent and the names retire on death."},
+      {q:"What if I roll badly on character creation?", a:"Low rolls tell interesting stories. A Battered weapon and a Weakened trait isn't a broken character — it's a compelling origin. You can re-roll once (500 coins, final) or twice (1,500 coins, absolute final) per stat."},
+      {q:"Can my character die permanently?", a:"Yes. Death is real. You can Resurrect (6,000 coins) or start a New Character (1,000 coins). Your dead character's legacy stays in the lore permanently."},
+      {q:"What does Protection Mode NOT cover?", a:"Curses, world events, NPC decisions, consequences from your own actions. Protection only covers death and being targeted in a Box Battle."},
+      {q:"Can I trade items with other players?", a:"Yes — Item Trade requires 1,000 coins AND both players must agree. No forced trades."},
+      {q:"How do alliances work in Box Battles?", a:"Allied communities pool coins to support their player. It makes battles significantly more dramatic and high-stakes."},
+      {q:"What is a Box Battle?", a:"A TikTok box battle between two players. Chat votes to start it (500 coins minimum). Communities throw coins for 3 minutes. Highest total wins and selects a consequence for the loser from the Consequence Ladder."},
+      {q:"How are Kling episodes made?", a:"After major story moments — deaths, betrayals, critical hits, origin stories — I animate a 15–90 second episode using Kling AI and post it to TikTok feed. Episodes are how new viewers discover the world."},
+      {q:"Is there a pay-to-win problem?", a:"Coins give you more actions, not guaranteed wins. Every action still resolves on a d20. A 29,999-coin Epic action can still fumble. Big spending creates bigger stakes, not guaranteed outcomes."},
+      {q:"Can a villain target my character?", a:"Yes. The world is dangerous. NPCs and villains have memory and make choices between sessions. Protection Mode shields from player targeting — not from the story itself."}
+    ];
+
+    const REP = {
+      Warrior:[{r:[1,1],title:"The Broken Shield",passive:"-1 first combat roll/session. Allies gain +1 DEF nearby."},{r:[2,2],title:"The Deserter",passive:"Cannot call authority backup. Rogue contacts available."},{r:[3,3],title:"The Cursed Blade",passive:"First weapon roll/arc disadvantage. Crits deal +2."},{r:[4,4],title:"The Unfinished War",passive:"+1 intimidation. -1 social rolls outside combat."},{r:[5,7],title:"The Steadfast",passive:"Allies nearby cannot be cursed without rolling first."},{r:[8,9],title:"The Iron Wall",passive:"+1 DEF rolls when protecting another player."},{r:[10,11],title:"The Oathkeeper",passive:"Declare an oath once/session. If fulfilled, +2 to next 3 rolls."},{r:[12,13],title:"The Last Line",passive:"+2 combat rolls at 3 HP or below."},{r:[14,14],title:"The Hollow's Bulwark",passive:"Immune to first curse each arc."},{r:[15,16],title:"The Undying",passive:"If dying, roll d20. 10+ = survive at 1 HP (once/arc)."},{r:[17,18],title:"The Warlord of Ash",passive:"Can command allies. 15+ action roll lands as bonus."},{r:[19,19],title:"The Unkillable",passive:"+1 all combat. Hostiles must roll to approach."},{r:[20,20],title:"THE HOLLOW'S CHAMPION",passive:"Once/arc, call on The Hollow to re-roll any result."}],
+      Wizard:[{r:[1,1],title:"The Silenced",passive:"First spell/session: d6, on 1 the effect reverses."},{r:[2,2],title:"The Forbidden Scholar",passive:"+2 INT, -1 WIS. Access to forbidden rolls."},{r:[3,3],title:"The Unstable",passive:"On fumble, spell affects an additional random target."},{r:[4,4],title:"The Once-Great",passive:"-1 spell rolls but +2 in their research era."},{r:[5,7],title:"The Theorist",passive:"+1 puzzle-solving and knowledge rolls."},{r:[8,9],title:"The Practical Caster",passive:"Cast minor spells without full action once/session."},{r:[10,11],title:"The Arcanist",passive:"+1 all INT. Arcane locks respond to them."},{r:[12,13],title:"The Seeker",passive:"Once/session, ask DM one yes/no about current arc."},{r:[14,14],title:"The Hollow's Eye",passive:"+2 detecting illusions, hidden passages, deception."},{r:[15,16],title:"The Void Speaker",passive:"Once/arc, attempt communication with non-speaking entity."},{r:[17,18],title:"The Architect of Ruin",passive:"+2 area-effect and destructive spell rolls."},{r:[19,19],title:"The Worldbreaker",passive:"+2 all spells. Average-INT enemies flee on fumble."},{r:[20,20],title:"THE HOLLOW'S ORACLE",passive:"Once/arc, DM must give one piece of true hidden lore."}],
+      Rogue:[{r:[1,1],title:"The Marked",passive:"Once/session an NPC may attempt to claim bounty."},{r:[2,2],title:"The Burned Informant",passive:"-1 trust rolls. +1 solo infiltration."},{r:[3,3],title:"The Phantom Thief",passive:"Cannot trade stolen items openly."},{r:[4,4],title:"The Failed Contract",passive:"-1 guild rolls. +1 off-the-books."},{r:[5,7],title:"The Reliable Shadow",passive:"+1 stealth and infiltration."},{r:[8,9],title:"The Cutpurse",passive:"+1 pickpocket and sleight of hand."},{r:[10,11],title:"The Hollow Fox",passive:"+2 stealth in natural and dark environments."},{r:[12,13],title:"The Ghost Contract",passive:"Once/session, complete minor objective off-screen."},{r:[14,14],title:"The Hollow's Whisper",passive:"Immune to environmental detection in Hollow locations."},{r:[15,16],title:"The Unseen Blade",passive:"+2 sneak attack. Critical hits on 19-20."},{r:[17,18],title:"The Collector of Secrets",passive:"Once/arc, reveal a secret about a named NPC."},{r:[19,19],title:"The Sovereign of Shadows",passive:"+2 covert rolls. One favour from underground/arc."},{r:[20,20],title:"THE HOLLOW'S PHANTOM",passive:"Once/arc, any action they take is undetectable."}],
+      Healer:[{r:[1,1],title:"The One Who Couldn't",passive:"-1 first heal/session. Success despite this = +2 next."},{r:[2,2],title:"The Cursed Hands",passive:"On fumble healing, target briefly cursed instead."},{r:[3,3],title:"The Heretic Mender",passive:"+1 non-standard injuries. -1 in holy locations."},{r:[4,4],title:"The Plague Memory",passive:"+2 disease knowledge. Some NPCs won't be touched."},{r:[5,7],title:"The Mender",passive:"+1 all healing rolls."},{r:[8,9],title:"The Field Surgeon",passive:"Can stabilise downed characters without full action."},{r:[10,11],title:"The Hollow's Grace",passive:"+2 healing in Hollow locations."},{r:[12,13],title:"The Keeper of the Fallen",passive:"Once/arc, prevent death on successful WIS roll 15+."},{r:[14,14],title:"The Truthseer",passive:"+2 detecting NPC deception or hidden agendas."},{r:[15,16],title:"The Miracle Worker",passive:"Once/session, re-roll a failed healing roll free."},{r:[17,18],title:"The Soul Weaver",passive:"+2 WIS. Can attempt to lift curses without Major gift."},{r:[19,19],title:"The Hollow's Mercy",passive:"Immune to attacks while actively healing."},{r:[20,20],title:"THE HOLLOW'S SAINT",passive:"Once/arc, revive deceased player with WIS roll (no coins)."}],
+      Merchant:[{r:[1,1],title:"The Debtor",passive:"Once/arc a creditor NPC appears. Roll CHA."},{r:[2,2],title:"The Counterfeiter",passive:"+1 black market. -1 legitimate trading."},{r:[3,3],title:"The Failed Caravan",passive:"-1 organised trade. +1 operating solo."},{r:[4,4],title:"The Swindled",passive:"+1 negotiation from disadvantage."},{r:[5,7],title:"The Reliable Trader",passive:"+1 trade and negotiation."},{r:[8,9],title:"The Appraiser",passive:"Identify any item's base value without a roll."},{r:[10,11],title:"The Hollow Broker",passive:"Once/session, locate specific rare item via contacts."},{r:[12,13],title:"The Networker",passive:"Once/arc, introduce a neutral NPC in any location."},{r:[14,14],title:"The Price of Everything",passive:"+2 info-gathering. Knowledge available — for a price."},{r:[15,16],title:"The Hollow's Broker",passive:"Once/arc, initiate trade between two hostile factions."},{r:[17,18],title:"The Monopolist",passive:"Controls one named resource in current arc."},{r:[19,19],title:"The Unseen Hand",passive:"+2 CHA and LCK. One major faction owes a favour."},{r:[20,20],title:"THE HOLLOW'S EXCHANGE",passive:"Once/arc, set the price of any transaction in the story."}],
+      Bard:[{r:[1,1],title:"The Silenced Song",passive:"Cannot perform in official locations without Major roll."},{r:[2,2],title:"The Liar's Ballad",passive:"-1 honesty persuasion. +2 misdirection."},{r:[3,3],title:"The Heartbreaker",passive:"High CHA rolls have 1-in-6 chance of unintended side effect."},{r:[4,4],title:"The Forgotten Prodigy",passive:"-1 large crowds. +2 performing to one person."},{r:[5,7],title:"The Travelling Voice",passive:"+1 all CHA rolls."},{r:[8,9],title:"The Court Favourite",passive:"+1 persuasion in formal settings."},{r:[10,11],title:"The Hollow's Voice",passive:"+2 performance in Hollow. Dark entities calmed."},{r:[12,13],title:"The Chronicler",passive:"Once/arc, recall precise detail from any past session."},{r:[14,14],title:"The Mood of the Room",passive:"+2 NPC mood assessment and manipulation."},{r:[15,16],title:"The Legend Maker",passive:"Once/arc, give another player a reputation boost."},{r:[17,18],title:"The Hollow's Witness",passive:"+2 WIS and CHA. Access restricted lore once/arc."},{r:[19,19],title:"The Architect of Stories",passive:"+2 CHA. A story they tell becomes permanent world lore."},{r:[20,20],title:"THE HOLLOW'S MEMORY",passive:"Once/arc, rewrite one consequence of any roll as narrated."}]
+    };
+
+    const WEAPONS = {
+      Warrior:[{r:[1,4],rarity:"Battered",name:"Cracked Garrison Sword",special:"None."},{r:[5,9],rarity:"Standard",name:"Garrison Longsword",special:"None."},{r:[10,14],rarity:"Fine",name:"Tempered Hollow Steel Blade",special:"+1 combat in underground or dark locations."},{r:[15,19],rarity:"Rare",name:"The Shieldbreaker",special:"Ignores 1 point of enemy DEF on a successful hit."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique property. Permanent. Never duplicated."}],
+      Wizard:[{r:[1,4],rarity:"Battered",name:"Cracked Focus Crystal",special:"None."},{r:[5,9],rarity:"Standard",name:"Scholar's Focus Rod",special:"None."},{r:[10,14],rarity:"Fine",name:"Hollow-Tuned Grimoire",special:"+1 spell rolls underground or near The Edge."},{r:[15,19],rarity:"Rare",name:"The Resonance Staff",special:"+1 offensive spells. Dark entities treat as higher threat."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique arcane property. Permanent. Never duplicated."}],
+      Rogue:[{r:[1,4],rarity:"Battered",name:"Worn Shortsword",special:"None."},{r:[5,9],rarity:"Standard",name:"Balanced Daggers (pair)",special:"None."},{r:[10,14],rarity:"Fine",name:"Hollow-Edged Stiletto",special:"+1 attack rolls from stealth."},{r:[15,19],rarity:"Rare",name:"The Silencer",special:"Actions with this weapon cannot be heard by NPCs."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique covert property. Permanent. Never duplicated."}],
+      Healer:[{r:[1,4],rarity:"Battered",name:"Worn Herb Satchel",special:"None."},{r:[5,9],rarity:"Standard",name:"Mender's Kit & Staff",special:"None."},{r:[10,14],rarity:"Fine",name:"Hollow Root Salves",special:"+1 healing on Hollow-curse related injuries."},{r:[15,19],rarity:"Rare",name:"The Binding Lantern",special:"Reveals NPC hidden status effects once per session."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique restorative property. Permanent. Never duplicated."}],
+      Merchant:[{r:[1,4],rarity:"Battered",name:"Rusty Counting Scales",special:"None."},{r:[5,9],rarity:"Standard",name:"Merchant's Pack & Ledger",special:"None."},{r:[10,14],rarity:"Fine",name:"Hollow Market Satchel",special:"Items inside unidentifiable without owner's consent."},{r:[15,19],rarity:"Rare",name:"The Gilded Tongue",special:"Once/arc, guarantee safe passage or neutralise one hostile NPC."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique economic property. Permanent. Never duplicated."}],
+      Bard:[{r:[1,4],rarity:"Battered",name:"Cracked Lute",special:"None."},{r:[5,9],rarity:"Standard",name:"Travelling Instrument",special:"None."},{r:[10,14],rarity:"Fine",name:"Hollow-Carved Instrument",special:"+1 performance in Hollow. Heard by things that shouldn't hear."},{r:[15,19],rarity:"Rare",name:"The Resonance Chord",special:"Once/session, NPC mood change auto-succeeds."},{r:[20,20],rarity:"LEGENDARY",name:"[UNIQUE — Named with player]",special:"One unique performance property. Permanent. Never duplicated."}]
+    };
+    const RARITY_COLOR = {Battered:"#94a3b8",Standard:"#cbd5e1",Fine:"#86efac",Rare:"#7dd3fc",LEGENDARY:"#d8b4fe"};
+
+    // ════ DATA PERSISTENCE ════
+    let state = { players: [], npcs: [], villains: [], logs: [], battleHistory: [], checks: {}, sessionNotes: "", sessionThreads: "" };
+    try {
+      const stored = localStorage.getItem('hollow_realm_data_v7');
+      if (stored) state = JSON.parse(stored);
+    } catch(e) {}
+    // Ensure backwards compatibility 
+    if(!state.npcs) state.npcs = [];
+    if(!state.villains) state.villains = [];
+
+    function save() { localStorage.setItem('hollow_realm_data_v7', JSON.stringify(state)); }
+
+    function logEvent(msg, color) {
+      const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      state.logs.unshift({ id: Date.now(), time, msg, color });
+      if(state.logs.length > 50) state.logs.pop();
+      save();
+      renderLedger();
+    }
+
+    // ════ IMAGE COMPRESSION LOGIC ════
+    let tempUserPhoto = ''; let tempCharPhoto = '';
+
+    function handleImageUpload(input, previewId) {
+      const file = input.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas'); const MAX_SIZE = 150; 
+          let w = img.width; let h = img.height;
+          if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } } 
+          else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+          document.getElementById(previewId).src = dataUrl;
+          document.getElementById(previewId).style.display = 'block';
+          if(previewId === 'prev-user') tempUserPhoto = dataUrl;
+          if(previewId === 'prev-char') tempCharPhoto = dataUrl;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ════ TAB NAVIGATION ════
+    function showTab(tabId) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+      
+      if (tabId === 'players') renderPlayers();
+      if (tabId === 'npcs') renderNpcs();
+      if (tabId === 'villains') renderVillains();
+      if (tabId === 'ledger') renderLedger();
+      if (tabId === 'wrapup') renderWrapUp();
+      if (tabId === 'ref') { initRefTab(); renderRefTables('Warrior'); }
+      if (tabId === 'rules') { initRules(); }
+    }
+
+    // ════ PLAYERS LOGIC ════
+    function initForgeDropdown() {
+      const el = document.getElementById('c-charname');
+      const inUse = state.players.filter(p => !p.isDead).map(p => p.charname);
+      const available = NAMES.filter(n => !inUse.includes(n));
+      el.innerHTML = '<option value="">— Select Name —</option>' + 
+        available.map(n => `<option value="${n}">${n}</option>`).join('') +
+        '<option value="custom">✦ Custom Name...</option>';
+    }
+
+    function toggleCustomName() {
+      const val = document.getElementById('c-charname').value;
+      const customInput = document.getElementById('c-customname');
+      if(val === 'custom') { customInput.style.display = 'block'; customInput.focus(); } else { customInput.style.display = 'none'; }
+    }
+
+    function renderPlayers() {
+      initForgeDropdown();
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const list = document.getElementById('players-container');
+      
+      if (!state.players.length) {
+        list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--dim);">No adventurers logged.</div>'; return;
+      }
+
+      let html = '';
+      state.players.forEach(p => {
+        if (!p.charname.toLowerCase().includes(search) && !p.username.toLowerCase().includes(search)) return;
+        
+        const pct = Math.max(0, (p.hp / p.maxHp) * 100);
+        const hpCol = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--gold)' : 'var(--red)';
+        const borderCol = p.isDead ? 'var(--border)' : (p.protectionBalance > 0 ? 'var(--gold)' : 'var(--border)');
+
+        const charImg = p.charPhoto ? `<img src="${p.charPhoto}" class="char-avatar" style="border:none;">` : `<div class="char-avatar">${CLASS_ICON[p.cls] || '👤'}</div>`;
+        const userImg = p.userPhoto ? `<img src="${p.userPhoto}" class="user-avatar">` : `<div class="user-avatar">@</div>`;
+
+        html += `
+        <div class="player-card ${p.isDead ? 'dead' : ''}" style="border-color:${borderCol}">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div class="avatar-container">${charImg}${userImg}</div>
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <div style="font-weight:700; font-size:1.1rem; color:#fff;">${p.charname} ${p.isDead ? '☠️' : ''}</div>
+                  <div style="font-size:0.75rem; color:var(--dim); margin-top:2px;">@${p.username} · ${p.cls}</div>
+                </div>
+                <button class="btn-sm" style="border-color:transparent; background:transparent; padding:0;" onclick="openEdit(${p.id})">⚙️</button>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:8px; font-size:0.65rem; color:var(--dim);">
+                <div>${p.status}</div><div>•</div><div>${p.faction}</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px; display:flex; align-items:center; gap:10px;">
+            <button class="btn-sm" style="background:rgba(248,113,113,0.15); color:var(--red); border-color:rgba(248,113,113,0.3);" onclick="adjHp(${p.id}, -1)">-1</button>
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--dim); font-weight:600; margin-bottom:4px;">
+                <span>HP</span><span>${p.hp} / ${p.maxHp}</span>
+              </div>
+              <div class="hp-bar"><div class="hp-fill" style="width:${pct}%; background:${hpCol};"></div></div>
+            </div>
+            <button class="btn-sm" style="background:rgba(52,211,153,0.15); color:var(--green); border-color:rgba(52,211,153,0.3);" onclick="adjHp(${p.id}, 1)">+1</button>
+          </div>
+        </div>`;
+      });
+      list.innerHTML = html;
+    }
+
+    function addPlayer() {
+      const u = document.getElementById('c-username').value.trim();
+      let c = document.getElementById('c-charname').value;
+      if(c === 'custom') c = document.getElementById('c-customname').value.trim();
+      const cls = document.getElementById('c-class').value;
+      const rRep = document.getElementById('c-roll-rep').value;
+      const rTrait = document.getElementById('c-roll-trait').value;
+      const rWpn = document.getElementById('c-roll-wpn').value;
+      
+      if(!u || !c || !cls) return alert('Please fill required identity fields.');
+      
+      let initNotes = '';
+      if(rRep || rTrait || rWpn) { initNotes = `[ORIGIN ROLLS]\nReputation: ${rRep || 'N/A'}\nTrait: ${rTrait || 'N/A'}\nWeapon: ${rWpn || 'N/A'}\n\n`; }
+      
+      const p = {
+        id: Date.now(), username: u, charname: c, cls: cls, hp: CLASS_HP[cls] || 8, maxHp: CLASS_HP[cls] || 8,
+        status: 'Active & Healthy', faction: 'Unaligned', notes: initNotes, userPhoto: tempUserPhoto, charPhoto: tempCharPhoto,
+        isDead: false, protectionBalance: 0
+      };
+      
+      state.players.unshift(p);
+      logEvent(`Forged new character: ${c} (${cls})`, 'var(--text)');
+      save();
+      
+      // Reset
+      document.getElementById('c-username').value = ''; document.getElementById('c-charname').value = '';
+      document.getElementById('c-customname').value = ''; document.getElementById('c-customname').style.display = 'none';
+      document.getElementById('c-class').value = ''; document.getElementById('c-roll-rep').value = '';
+      document.getElementById('c-roll-trait').value = ''; document.getElementById('c-roll-wpn').value = '';
+      document.getElementById('up-user').value = ''; document.getElementById('up-char').value = '';
+      document.getElementById('prev-user').style.display = 'none'; document.getElementById('prev-user').src = '';
+      document.getElementById('prev-char').style.display = 'none'; document.getElementById('prev-char').src = '';
+      tempUserPhoto = ''; tempCharPhoto = '';
+      
+      showTab('players');
+    }
+
+    function adjHp(id, delta) {
+      const p = state.players.find(x => x.id === id);
+      if(!p) return;
+      p.hp = Math.max(0, Math.min(p.maxHp, p.hp + delta));
+      logEvent(`Adjusted ${p.charname}'s HP by ${delta > 0 ? '+'+delta : delta} (${p.hp}/${p.maxHp})`, delta > 0 ? 'var(--green)' : 'var(--red)');
+      save(); renderPlayers();
+    }
+
+    // ════ PLAYER EDIT MODAL ════
+    let editId = null;
+    function openEdit(id) {
+      editId = id; const p = state.players.find(x => x.id === id);
+      document.getElementById('m-title').innerText = p.charname; document.getElementById('m-sub').innerText = '@' + p.username;
+      document.getElementById('m-status').value = p.status; document.getElementById('m-faction').value = p.faction;
+      document.getElementById('m-notes').value = p.notes || '';
+      
+      const dBtn = document.getElementById('m-death-btn');
+      dBtn.innerText = p.isDead ? '⚗️ Resurrect' : '☠️ Mark Dead';
+      dBtn.style.color = p.isDead ? 'var(--gold)' : 'var(--red)'; dBtn.style.borderColor = p.isDead ? 'var(--gold)' : 'var(--red)';
+      dBtn.style.background = p.isDead ? 'rgba(251, 191, 36, 0.2)' : 'rgba(248, 113, 113, 0.2)';
+      document.getElementById('edit-modal').classList.add('open');
+    }
+
+    function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editId = null; }
+
+    function saveEdit() {
+      const p = state.players.find(x => x.id === editId);
+      p.status = document.getElementById('m-status').value; p.faction = document.getElementById('m-faction').value;
+      p.notes = document.getElementById('m-notes').value;
+      save(); closeEditModal(); renderPlayers();
+    }
+
+    function toggleDeath() {
+      const p = state.players.find(x => x.id === editId);
+      p.isDead = !p.isDead; p.hp = p.isDead ? 0 : Math.ceil(p.maxHp / 2);
+      logEvent(`${p.charname} marked as ${p.isDead ? 'Dead' : 'Resurrected'}`, p.isDead ? 'var(--red)' : 'var(--gold)');
+      saveEdit();
+    }
+
+    // ════ NPC LOGIC ════
+    function renderNpcs() {
+      const search = document.getElementById('npc-search-input').value.toLowerCase();
+      const list = document.getElementById('npcs-container');
+      
+      if (!state.npcs.length) {
+        list.innerHTML = `<div style="text-align:center; color:var(--dim); padding:50px 16px;"><div style="font-size:2rem; margin-bottom:10px;">👁</div><div>No NPCs recorded yet.</div></div>`;
+        return;
+      }
+
+      let html = '';
+      state.npcs.forEach(n => {
+        if (search && !n.name.toLowerCase().includes(search) && !n.faction.toLowerCase().includes(search) && !n.location.toLowerCase().includes(search)) return;
+        const disp = NPC_DISPOSITIONS[n.disposition] || NPC_DISPOSITIONS.neutral;
+        const stat = NPC_STATUSES
