@@ -1626,11 +1626,122 @@ function renderArsenal() {
 }
 
 function renderClasses() {
-  return `<div class="empty-state"><div class="empty-icon">🧙</div><div>Class lore and specific abilities pending.</div></div>`;
+  const c = CLASS_LORE[STATE.classTab];
+  const stats = CLASS_BASE_STATS[STATE.classTab];
+  const primary = PRIMARY_STAT[STATE.classTab];
+
+  return `
+    <div class="arsenal-nav">
+      ${CLASSES.map(cls => `
+        <div class="arsenal-tab ${STATE.classTab === cls ? 'active' : ''}" style="border-color:${STATE.classTab === cls ? STAT_COLORS[PRIMARY_STAT[cls]] : 'var(--border)'}" onclick="STATE.classTab='${cls}';render()">
+          ${CLASS_ICON[cls]} ${cls}
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card-glow" style="border-color:${STAT_COLORS[primary]}60">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start">
+        <div>
+          <div style="font-size:1.2rem; font-weight:bold; color:#fff">${CLASS_ICON[STATE.classTab]} ${STATE.classTab.toUpperCase()}</div>
+          <div style="font-size:0.65rem; color:var(--dim); font-style:italic; margin-top:2px; font-family:Arial,sans-serif">"${c.tagline}"</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.55rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px">Base HP</div>
+          <div style="font-size:1.1rem; font-weight:bold; color:var(--green)">${CLASS_HP[STATE.classTab]}</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="lore-tab-bar">
+        ${['overview', 'mechanics', 'gift', 'lore'].map(sec => `
+          <div class="lore-tab ${STATE.classSec === sec ? 'active' : ''}" onclick="STATE.classSec='${sec}';render()">
+            ${sec.charAt(0).toUpperCase() + sec.slice(1)}
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="fade-in" style="min-height:180px">
+        ${renderClassSection(c, stats, primary)}
+      </div>
+    </div>
+  `;
+}
+
+function renderClassSection(c, stats, primary) {
+  switch(STATE.classSec) {
+    case 'overview':
+      return `
+        <div style="font-size:0.72rem; color:var(--text); line-height:1.6; font-family:Arial,sans-serif">
+          ${c.overview}
+          <div class="section-title" style="margin-top:15px">Best Suited For</div>
+          <div style="color:var(--purple-light); font-style:italic">"${c.playstyle}"</div>
+        </div>
+      `;
+    case 'mechanics':
+      return `
+        <div class="stat-grid" style="margin-bottom:15px">
+          ${Object.entries(stats).map(([s, v]) => `
+            <div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; text-align:center; border:1px solid ${s === primary ? STAT_COLORS[s] + '60' : 'transparent'}">
+              <div style="font-size:0.55rem; color:var(--dim)">${s}</div>
+              <div style="font-size:0.9rem; font-weight:bold; color:${STAT_COLORS[s]}">${v}${s === primary ? '★' : ''}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="section-title">Strengths</div>
+        ${c.strengths.map(s => `<div style="font-size:0.68rem; margin-bottom:4px; color:var(--green)">✓ ${s}</div>`).join('')}
+        <div class="section-title" style="margin-top:10px">Weaknesses</div>
+        ${c.weaknesses.map(w => `<div style="font-size:0.68rem; margin-bottom:4px; color:var(--red)">✗ ${w}</div>`).join('')}
+      `;
+    case 'gift':
+      return `
+        <div style="background:rgba(102,187,106,0.1); border:1px solid var(--green); border-radius:10px; padding:15px; text-align:center">
+          <div style="font-size:0.6rem; color:var(--green); text-transform:uppercase; letter-spacing:2px; margin-bottom:5px">Unique Gift Power</div>
+          <div style="font-size:1rem; font-weight:bold; color:#fff; margin-bottom:8px">✨ ${c.giftPower.split('—')[0]}</div>
+          <div style="font-size:0.7rem; color:#ccc; line-height:1.4; font-family:Arial,sans-serif">${c.giftPower.split('—')[1]}</div>
+        </div>
+        <div class="info-bar" style="margin-top:12px">Available once per session. Mark as "Used" in the Player Profile to track.</div>
+      `;
+    case 'lore':
+      return `
+        <div style="font-size:0.72rem; color:var(--dim); line-height:1.7; font-style:italic; font-family:Georgia,serif">
+          “${c.lore}”
+        </div>
+      `;
+    default: return '';
+  }
 }
 
 function renderRules() {
-  return `<div class="empty-state"><div class="empty-icon">📜</div><div>Rules and mechanics documentation pending.</div></div>`;
+  return `
+    <div class="lore-tab-bar">
+      ${RULES_SECTIONS.map(s => `
+        <div class="lore-tab ${STATE.rulesTab === s.id ? 'active' : ''}" onclick="STATE.rulesTab='${s.id}';render()">
+          ${s.title.split(' ').pop()}
+        </div>
+      `).join('')}
+      <div class="lore-tab ${STATE.rulesTab === 'faq' ? 'active' : ''}" onclick="STATE.rulesTab='faq';render()">FAQ</div>
+    </div>
+
+    <div class="card">
+      ${STATE.rulesTab === 'faq' ? `
+        <div class="section-title">Frequently Asked Questions</div>
+        ${FAQ.map((f, i) => `
+          <div style="margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:10px">
+            <div style="font-size:0.75rem; font-weight:bold; color:var(--purple-light); margin-bottom:4px; cursor:pointer" onclick="STATE.faqOpen = STATE.faqOpen === ${i} ? null : ${i}; render()">
+              Q: ${f.q} ${STATE.faqOpen === i ? '▴' : '▾'}
+            </div>
+            ${STATE.faqOpen === i ? `<div class="fade-in" style="font-size:0.7rem; color:var(--text); line-height:1.4">${f.a}</div>` : ''}
+          </div>
+        `).join('')}
+      ` : `
+        <div class="section-title">${RULES_SECTIONS.find(s => s.id === STATE.rulesTab).title}</div>
+        <div style="font-size:0.72rem; color:var(--text); white-space:pre-wrap; line-height:1.6; font-family:Arial,sans-serif">
+          ${RULES_SECTIONS.find(s => s.id === STATE.rulesTab).content}
+        </div>
+      `}
+    </div>
+  `;
 }
 
 // ═══════════════════════════════════════════════════
