@@ -1613,16 +1613,109 @@ entries(PIN_TYPES).map(([k,pt])=>{
 // REMAINING UI TAB RENDERERS
 // ═══════════════════════════════════════════════════
 
-function renderRaids() {
-  return `<div class="empty-state"><div class="empty-icon">⚔️</div><div>Raid management interface pending.</div></div>`;
-}
+// ═══════════════════════════════════════════════════
+// NEW COMPLETED TAB RENDERERS
+// ═══════════════════════════════════════════════════
 
-function renderBase() {
-  return `<div class="empty-state"><div class="empty-icon">🏠</div><div>Base upgrading and resident UI pending.</div></div>`;
+function renderRaids() {
+  const locs = Object.entries(RAID_LOCATIONS);
+  return `
+    <div class="card-glow">
+      <div class="section-title">Active Raid Launcher</div>
+      <div style="margin-bottom:12px">
+        <label class="label">Target Location</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          ${locs.map(([id, data]) => `
+            <button class="btn btn-sm" style="border-color:${STATE.raidLocation === id ? 'var(--purple)' : 'var(--border)'}; background:${STATE.raidLocation === id ? 'var(--purple-dim)' : 'transparent'}" onclick="STATE.raidLocation='${id}';render()">
+              ${data.icon} ${data.name.split(' ').pop()}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="label">Raid Tier</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          ${Object.entries(RAID_TIERS).map(([id, t]) => `
+            <button class="btn btn-sm" style="border-color:${STATE.raidTier === id ? t.color : 'var(--border)'}; color:${STATE.raidTier === id ? '#fff' : 'var(--dim)'}; background:${STATE.raidTier === id ? t.color + '40' : 'transparent'}" onclick="STATE.raidTier='${id}';render()">
+              ${t.label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <button class="btn btn-purple btn-full" onclick="startRaid()">⚔️ DEPLOY RAID SQUAD</button>
+    </div>
+    <div class="card">
+      <div class="section-title">Raid History</div>
+      ${STATE.raidHistory.length === 0 ? '<div style="font-size:0.65rem; color:var(--dim)">No raids recorded this arc.</div>' : 
+        STATE.raidHistory.slice(0,5).map(r => `
+          <div style="font-size:0.7rem; padding:6px 0; border-bottom:1px solid var(--border)">
+            <span style="color:var(--gold)">${r.location}</span> — ${r.tier} (${r.status})
+          </div>
+        `).join('')}
+    </div>
+  `;
 }
 
 function renderArsenal() {
-  return `<div class="empty-state"><div class="empty-icon">🛡️</div><div>Arsenal and loot tables pending.</div></div>`;
+  const categories = ['Warrior', 'Wizard', 'Rogue', 'Healer', 'Merchant', 'Bard'];
+  const items = ARSENAL_WEAPONS[STATE.arsenalTab] || [];
+  
+  return `
+    <div class="arsenal-nav">
+      ${categories.map(c => `
+        <div class="arsenal-tab ${STATE.arsenalTab === c ? 'active' : ''}" onclick="STATE.arsenalTab='${c}';render()">
+          ${CLASS_ICON[c]} ${c}
+        </div>
+      `).join('')}
+    </div>
+    <div class="section-title">${STATE.arsenalTab} Armory</div>
+    ${items.map(item => `
+      <div class="item-card card" style="border-left: 4px solid ${item.color}">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div style="font-size:1.2rem">${item.image}</div>
+          <div style="flex:1; margin-left:12px">
+            <div style="font-weight:bold; font-size:0.8rem; color:#fff">${item.name}</div>
+            <div style="font-size:0.6rem; color:${item.color}">${item.rarity} · ${item.damage}</div>
+          </div>
+          <button class="btn btn-sm" onclick="copyToClipboard('${esc(item.name)}')">📋</button>
+        </div>
+        <div style="font-size:0.65rem; color:var(--dim); margin-top:8px; font-style:italic">"${item.lore}"</div>
+        <div style="font-size:0.65rem; color:var(--purple-light); margin-top:4px">✨ ${item.effect}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderBase() {
+  return `
+    <div class="card-glow">
+      <div class="section-title">🏠 Moon Squad HQ — Defense: ${STATE.baseDefense}</div>
+      <div class="info-bar">Upgrade rooms to unlock player bonuses and protect the vault from NPC raids.</div>
+      ${Object.entries(BASE_ROOMS).map(([id, room]) => {
+        const level = STATE.baseRooms[id] || 0;
+        const current = room.tiers[level - 1] || { bonus: 'Not Constructed' };
+        const next = room.tiers[level];
+        return `
+          <div class="room-card" style="padding:10px 0; border-bottom:1px solid var(--border)">
+            <div style="flex:1">
+              <div style="font-weight:bold; font-size:0.8rem">${room.icon} ${room.name} <span style="color:var(--purple-light)">Lv.${level}</span></div>
+              <div style="font-size:0.65rem; color:var(--dim)">${current.bonus}</div>
+            </div>
+            ${next ? `<button class="btn btn-sm" style="color:var(--gold)" onclick="upgradeRoom('${id}', ${next.cost})">Upgrade (${next.cost})</button>` : '<span style="font-size:0.6rem; color:var(--green)">MAXED</span>'}
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title">Base Residents (${STATE.baseResidents.length})</div>
+      ${STATE.baseResidents.map(r => `
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:5px">
+          <span>${RESIDENT_ROLES[r.role].icon} <b>${r.name}</b> (${RESIDENT_ROLES[r.role].label})</span>
+          <span style="color:var(--dim)">${RESIDENT_ROLES[r.role].bonus}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderClasses() {
